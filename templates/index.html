@@ -313,109 +313,109 @@
             data-event-url="{{ url_for('event_detail', event_id=event._id) }}">
             <!-- Enhanced Event Image -->
             <div class="relative h-56 bg-gradient-to-br from-blue-400 via-purple-500 to-pink-500 overflow-hidden">
-            <!-- Animated Background -->
-            <div class="absolute inset-0 bg-gradient-to-br from-blue-600/80 to-purple-600/80"></div>
-            <div class="absolute inset-0 opacity-30">
-                <div class="absolute top-4 left-4 w-8 h-8 bg-white/20 rounded-full animate-ping"></div>
-                <div class="absolute bottom-6 right-6 w-6 h-6 bg-yellow-300/30 rounded-full animate-pulse"></div>
-                <div class="absolute top-1/2 left-1/2 w-4 h-4 bg-pink-300/40 rounded-full animate-bounce"></div>
-            </div>
+                <!-- Animated Background -->
+                <div class="absolute inset-0 bg-gradient-to-br from-blue-600/80 to-purple-600/80"></div>
+                <div class="absolute inset-0 opacity-30">
+                    <div class="absolute top-4 left-4 w-8 h-8 bg-white/20 rounded-full animate-ping"></div>
+                    <div class="absolute bottom-6 right-6 w-6 h-6 bg-yellow-300/30 rounded-full animate-pulse"></div>
+                    <div class="absolute top-1/2 left-1/2 w-4 h-4 bg-pink-300/40 rounded-full animate-bounce"></div>
+                </div>
 
-            <!-- Event Icon -->
-            <div class="absolute inset-0 flex items-center justify-center">
+                <!-- Event Icon -->
+                <div class="absolute inset-0 flex items-center justify-center">
+                    <div
+                        class="w-20 h-20 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform duration-500">
+                        <i class="fas fa-calendar-alt text-white text-3xl"></i>
+                    </div>
+                </div>
+
+                <!-- Date Badge -->
+                <div class="absolute top-6 right-6 bg-white/95 backdrop-blur-sm px-4 py-2 rounded-xl shadow-lg">
+                    <div class="text-lg font-black text-gray-900">{{ event.date.strftime('%d') }}</div>
+                    <div class="text-xs font-semibold text-gray-600 -mt-1">{{ event.date.strftime('%b') }}</div>
+                </div>
+
+                <!-- Category Badge -->
+                {% if event.category %}
                 <div
-                    class="w-20 h-20 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform duration-500">
-                    <i class="fas fa-calendar-alt text-white text-3xl"></i>
+                    class="absolute top-6 left-6 bg-gradient-to-r from-yellow-400 to-orange-400 text-white px-3 py-1 rounded-full text-xs font-bold shadow-lg">
+                    {{ event.category }}
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Enhanced Event Content -->
+            <div class="p-8">
+                <h3
+                    class="text-xl font-semibold text-gray-900 mb-3 group-hover:text-blue-600 transition-colors duration-300 line-clamp-2">
+                    {{ event.title }}
+                </h3>
+
+                <!-- Event Details -->
+                <div class="space-y-3 mb-6">
+                    <div class="flex items-center text-gray-600">
+                        <div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center mr-4">
+                            <i class="fas fa-clock text-blue-600"></i>
+                        </div>
+                        <div>
+                            <div class="font-medium text-gray-900 text-sm">{{ event.date.strftime('%B %d, %Y') }}</div>
+                            <div class="text-xs text-gray-500">{{ event.date.strftime('%I:%M %p') }}</div>
+                        </div>
+                    </div>
+                    <div class="flex items-center text-gray-600">
+                        <div class="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center mr-4">
+                            <i class="fas fa-map-marker-alt text-red-600"></i>
+                        </div>
+                        <div>
+                            <div class="font-medium text-gray-900 text-sm">{{ event.location }}</div>
+                            <div class="text-xs text-gray-500">Event Location</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Event Description -->
+                <p class="text-sm text-gray-600 mb-4 line-clamp-3 leading-relaxed">
+                    {{ event.description[:150] }}{% if event.description|length > 150 %}...{% endif %}
+                </p>
+
+                <!-- Event Footer -->
+                <div class="flex items-center justify-between pt-4 border-t border-gray-100">
+                    <div class="flex items-center">
+                        <div class="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center mr-3">
+                            <i class="fas fa-users text-green-600 text-sm"></i>
+                        </div>
+                        <span class="text-sm font-semibold text-gray-700">{{ event.capacity }} spots available</span>
+                    </div>
+                    <div class="flex items-center text-blue-600 font-bold group-hover:text-blue-800 transition-colors">
+                        <span class="mr-2">Learn More</span>
+                        <i class="fas fa-arrow-right group-hover:translate-x-1 transition-transform duration-300"></i>
+                    </div>
                 </div>
             </div>
 
-            <!-- Date Badge -->
-            <div class="absolute top-6 right-6 bg-white/95 backdrop-blur-sm px-4 py-2 rounded-xl shadow-lg">
-                <div class="text-lg font-black text-gray-900">{{ event.date.strftime('%d') }}</div>
-                <div class="text-xs font-semibold text-gray-600 -mt-1">{{ event.date.strftime('%b') }}</div>
-            </div>
-
-            <!-- Category Badge -->
-            {% if event.category %}
+            <!-- Hover Effect Overlay -->
             <div
-                class="absolute top-6 left-6 bg-gradient-to-r from-yellow-400 to-orange-400 text-white px-3 py-1 rounded-full text-xs font-bold shadow-lg">
-                {{ event.category }}
-            </div>
-            {% endif %}
-        </div>
-
-        <!-- Enhanced Event Content -->
-        <div class="p-8">
-            <h3
-                class="text-xl font-semibold text-gray-900 mb-3 group-hover:text-blue-600 transition-colors duration-300 line-clamp-2">
-                {{ event.title }}
-            </h3>
-
-            <!-- Event Details -->
-            <div class="space-y-3 mb-6">
-                <div class="flex items-center text-gray-600">
-                    <div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center mr-4">
-                        <i class="fas fa-clock text-blue-600"></i>
-                    </div>
-                    <div>
-                        <div class="font-medium text-gray-900 text-sm">{{ event.date.strftime('%B %d, %Y') }}</div>
-                        <div class="text-xs text-gray-500">{{ event.date.strftime('%I:%M %p') }}</div>
-                    </div>
-                </div>
-                <div class="flex items-center text-gray-600">
-                    <div class="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center mr-4">
-                        <i class="fas fa-map-marker-alt text-red-600"></i>
-                    </div>
-                    <div>
-                        <div class="font-medium text-gray-900 text-sm">{{ event.location }}</div>
-                        <div class="text-xs text-gray-500">Event Location</div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Event Description -->
-            <p class="text-sm text-gray-600 mb-4 line-clamp-3 leading-relaxed">
-                {{ event.description[:150] }}{% if event.description|length > 150 %}...{% endif %}
-            </p>
-
-            <!-- Event Footer -->
-            <div class="flex items-center justify-between pt-4 border-t border-gray-100">
-                <div class="flex items-center">
-                    <div class="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center mr-3">
-                        <i class="fas fa-users text-green-600 text-sm"></i>
-                    </div>
-                    <span class="text-sm font-semibold text-gray-700">{{ event.capacity }} spots available</span>
-                </div>
-                <div class="flex items-center text-blue-600 font-bold group-hover:text-blue-800 transition-colors">
-                    <span class="mr-2">Learn More</span>
-                    <i class="fas fa-arrow-right group-hover:translate-x-1 transition-transform duration-300"></i>
-                </div>
+                class="absolute inset-0 bg-gradient-to-t from-blue-600/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none">
             </div>
         </div>
-
-        <!-- Hover Effect Overlay -->
-        <div
-            class="absolute inset-0 bg-gradient-to-t from-blue-600/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none">
-        </div>
+        {% endfor %}
     </div>
-    {% endfor %}
-</div>
 
-<!-- Enhanced CTA -->
-<div class="text-center mt-16">
-    <a href="{{ url_for('events') }}"
-        class="group relative inline-flex items-center px-12 py-6 bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 text-white rounded-2xl text-xl font-bold hover:from-blue-700 hover:via-purple-700 hover:to-pink-700 transition-all duration-500 transform hover:scale-110 shadow-2xl hover:shadow-3xl">
-        <div
-            class="absolute inset-0 bg-white/20 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500">
-        </div>
-        <i class="fas fa-calendar-check mr-3 text-2xl group-hover:rotate-12 transition-transform duration-300"></i>
-        <span class="relative z-10">View All Events</span>
-        <div
-            class="absolute -top-2 -right-2 w-6 h-6 bg-yellow-400 rounded-full flex items-center justify-center text-xs font-black text-gray-900 animate-bounce">
-            🎉
-        </div>
-    </a>
-</div>
+    <!-- Enhanced CTA -->
+    <div class="text-center mt-16">
+        <a href="{{ url_for('events') }}"
+            class="group relative inline-flex items-center px-12 py-6 bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 text-white rounded-2xl text-xl font-bold hover:from-blue-700 hover:via-purple-700 hover:to-pink-700 transition-all duration-500 transform hover:scale-110 shadow-2xl hover:shadow-3xl">
+            <div
+                class="absolute inset-0 bg-white/20 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500">
+            </div>
+            <i class="fas fa-calendar-check mr-3 text-2xl group-hover:rotate-12 transition-transform duration-300"></i>
+            <span class="relative z-10">View All Events</span>
+            <div
+                class="absolute -top-2 -right-2 w-6 h-6 bg-yellow-400 rounded-full flex items-center justify-center text-xs font-black text-gray-900 animate-bounce">
+                🎉
+            </div>
+        </a>
+    </div>
 </div>
 {% else %}
 <!-- Enhanced Empty State -->
@@ -740,7 +740,6 @@
                     </svg>
                 </div>
                 <div class="text-sm font-bold text-white">No Spam Ever</div>
-                <div class="text-xs text-blue-200">No Spam Ever</div>
             </div>
         </div>
     </div>

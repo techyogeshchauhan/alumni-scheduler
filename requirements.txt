@@ -77,6 +77,9 @@
 # yarl==1.20.1
 
 # for deployment?
+pip==25.2
+setuptools>=75.1.0
+wheel
 
 aiohappyeyeballs==2.6.1
 aiohttp==3.12.15
