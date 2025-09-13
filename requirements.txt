@@ -16,3 +16,7 @@ pytz==2023.3
 ics==0.7.2
 markdown==3.5.1
 bleach==6.1.0
+Flask
+pymongo        # ya Flask-PyMongo agar use karte ho
+dnspython          # mongodb+srv ke liye
+gunicorn
