@@ -1,0 +1,707 @@
+{% extends "base.html" %}
+{% block title %}Analytics Dashboard - Alumni Event Scheduler{% endblock %}
+{% block content %}
+<style>
+    :root {
+        --primary: #4361ee;
+        --secondary: #3f37c9;
+        --success: #4cc9f0;
+        --info: #4895ef;
+        --warning: #f72585;
+        --danger: #e63946;
+        --light: #f8f9fa;
+        --dark: #212529;
+        --gray: #6c757d;
+        --light-gray: #e9ecef;
+        --card-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+        --hover-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+    }
+
+    * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+    }
+
+    body {
+        font-family: 'Inter', sans-serif;
+        background-color: #f5f7fb;
+        color: #333;
+        line-height: 1.6;
+    }
+
+    .dashboard-container {
+        max-width: 1400px;
+        margin: 0 auto;
+        padding: 20px;
+    }
+
+    .header {
+        background: linear-gradient(120deg, var(--primary), var(--secondary));
+        color: white;
+        border-radius: 16px;
+        padding: 24px;
+        margin-bottom: 24px;
+        box-shadow: var(--card-shadow);
+    }
+
+    .header h1 {
+        font-size: 28px;
+        font-weight: 700;
+        margin-bottom: 8px;
+        display: flex;
+        align-items: center;
+    }
+
+    .header h1 i {
+        margin-right: 12px;
+        font-size: 32px;
+    }
+
+    .header p {
+        opacity: 0.9;
+        font-size: 16px;
+    }
+
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        gap: 20px;
+        margin-bottom: 24px;
+    }
+
+    .stat-card {
+        background: white;
+        border-radius: 16px;
+        padding: 20px;
+        box-shadow: var(--card-shadow);
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+
+    .stat-card:hover {
+        transform: translateY(-5px);
+        box-shadow: var(--hover-shadow);
+    }
+
+    .stat-icon {
+        width: 50px;
+        height: 50px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 16px;
+        font-size: 20px;
+    }
+
+    .events .stat-icon {
+        background: rgba(67, 97, 238, 0.15);
+        color: var(--primary);
+    }
+
+    .users .stat-icon {
+        background: rgba(76, 201, 240, 0.15);
+        color: var(--success);
+    }
+
+    .rsvps .stat-icon {
+        background: rgba(247, 37, 133, 0.15);
+        color: var(--warning);
+    }
+
+    .attendees .stat-icon {
+        background: rgba(72, 149, 239, 0.15);
+        color: var(--info);
+    }
+
+    .stat-card h3 {
+        font-size: 14px;
+        font-weight: 500;
+        color: var(--gray);
+        margin-bottom: 8px;
+    }
+
+    .stat-card .value {
+        font-size: 28px;
+        font-weight: 700;
+        margin-bottom: 8px;
+    }
+
+    .stat-card .change {
+        font-size: 14px;
+        font-weight: 500;
+        display: flex;
+        align-items: center;
+    }
+
+    .change.positive {
+        color: #2ecc71;
+    }
+
+    .change.negative {
+        color: #e74c3c;
+    }
+
+    .card {
+        background: white;
+        border-radius: 16px;
+        overflow: hidden;
+        box-shadow: var(--card-shadow);
+        margin-bottom: 24px;
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+
+    .card:hover {
+        box-shadow: var(--hover-shadow);
+    }
+
+    .card-header {
+        padding: 20px 24px;
+        border-bottom: 1px solid var(--light-gray);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .card-header h2 {
+        font-size: 18px;
+        font-weight: 600;
+        color: var(--dark);
+    }
+
+    .card-header .actions {
+        display: flex;
+        gap: 12px;
+    }
+
+    .card-header .actions button {
+        background: var(--light);
+        border: none;
+        border-radius: 8px;
+        padding: 6px 12px;
+        font-size: 14px;
+        cursor: pointer;
+        transition: background 0.2s;
+    }
+
+    .card-header .actions button:hover {
+        background: var(--light-gray);
+    }
+
+    .card-body {
+        padding: 24px;
+    }
+
+    table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    th,
+    td {
+        padding: 16px;
+        text-align: left;
+        border-bottom: 1px solid var(--light-gray);
+    }
+
+    th {
+        font-weight: 600;
+        color: var(--gray);
+        font-size: 14px;
+        text-transform: uppercase;
+    }
+
+    tr:last-child td {
+        border-bottom: none;
+    }
+
+    tr:hover {
+        background-color: #f9fafc;
+    }
+
+    .progress-bar {
+        height: 8px;
+        background: var(--light-gray);
+        border-radius: 4px;
+        overflow: hidden;
+    }
+
+    .progress-fill {
+        height: 100%;
+        border-radius: 4px;
+    }
+
+    .high {
+        background: linear-gradient(90deg, #4cc9f0, #4361ee);
+    }
+
+    .medium {
+        background: linear-gradient(90deg, #f72585, #7209b7);
+    }
+
+    .low {
+        background: linear-gradient(90deg, #ffaa00, #ff6b00);
+    }
+
+    .user-avatar {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        background: var(--light-gray);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-right: 12px;
+        color: var(--gray);
+    }
+
+    .user-info {
+        display: flex;
+        align-items: center;
+    }
+
+    .chart-container {
+        position: relative;
+        height: 300px;
+        width: 100%;
+    }
+
+    .export-options {
+        display: flex;
+        gap: 16px;
+        flex-wrap: wrap;
+    }
+
+    .export-btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 12px 20px;
+        border-radius: 12px;
+        border: none;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+
+    .export-btn i {
+        margin-right: 8px;
+    }
+
+    .export-btn.event {
+        background: linear-gradient(120deg, var(--primary), var(--secondary));
+        color: white;
+    }
+
+    .export-btn.user {
+        background: linear-gradient(120deg, var(--success), var(--info));
+        color: white;
+    }
+
+    .export-btn.rsvp {
+        background: linear-gradient(120deg, var(--warning), #b5179e);
+        color: white;
+    }
+
+    .export-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+    }
+
+    .badge {
+        padding: 4px 10px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 500;
+    }
+
+    .badge-success {
+        background: rgba(46, 204, 113, 0.15);
+        color: #27ae60;
+    }
+
+    .badge-warning {
+        background: rgba(241, 196, 15, 0.15);
+        color: #f39c12;
+    }
+
+    .badge-danger {
+        background: rgba(231, 76, 60, 0.15);
+        color: #e74c3c;
+    }
+
+    @media (max-width: 1024px) {
+        .stats-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+    }
+
+    @media (max-width: 768px) {
+        .stats-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .card-header {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 12px;
+        }
+
+        .card-header .actions {
+            align-self: stretch;
+            justify-content: space-between;
+        }
+
+        .export-options {
+            flex-direction: column;
+        }
+
+        .export-btn {
+            width: 100%;
+        }
+    }
+</style>
+</head>
+
+<body>
+    <div class="dashboard-container">
+        <!-- Header -->
+        <div class="header">
+            <h1><i class="fas fa-chart-pie"></i> Analytics Dashboard</h1>
+            <p>Comprehensive analytics and insights for your events</p>
+        </div>
+
+        <!-- Stats Overview -->
+        <div class="stats-grid">
+            <div class="stat-card events">
+                <div class="stat-icon">
+                    <i class="fas fa-calendar-alt"></i>
+                </div>
+                <h3>TOTAL EVENTS</h3>
+                <div class="value">12</div>
+                <div class="change positive">
+                    <i class="fas fa-arrow-up"></i> 4.3% from last month
+                </div>
+            </div>
+
+            <div class="stat-card users">
+                <div class="stat-icon">
+                    <i class="fas fa-users"></i>
+                </div>
+                <h3>ACTIVE USERS</h3>
+                <div class="value">248</div>
+                <div class="change positive">
+                    <i class="fas fa-arrow-up"></i> 12.7% from last month
+                </div>
+            </div>
+
+            <div class="stat-card rsvps">
+                <div class="stat-icon">
+                    <i class="fas fa-ticket-alt"></i>
+                </div>
+                <h3>TOTAL RSVPs</h3>
+                <div class="value">1,428</div>
+                <div class="change positive">
+                    <i class="fas fa-arrow-up"></i> 8.6% from last month
+                </div>
+            </div>
+
+            <div class="stat-card attendees">
+                <div class="stat-icon">
+                    <i class="fas fa-user-check"></i>
+                </div>
+                <h3>CONFIRMED ATTENDEES</h3>
+                <div class="value">982</div>
+                <div class="change positive">
+                    <i class="fas fa-arrow-up"></i> 5.2% from last month
+                </div>
+            </div>
+        </div>
+
+        <!-- Event Attendance Analytics -->
+        <div class="card">
+            <div class="card-header">
+                <h2><i class="fas fa-chart-bar mr-2"></i> Event Attendance Analytics</h2>
+                <div class="actions">
+                    <button><i class="fas fa-filter"></i> Filter</button>
+                    <button><i class="fas fa-sort"></i> Sort</button>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Event</th>
+                                <th>Date</th>
+                                <th>Capacity</th>
+                                <th>Total RSVPs</th>
+                                <th>Going</th>
+                                <th>Attendance Rate</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td class="text-sm font-medium text-gray-900">Tech Conference 2023</td>
+                                <td class="text-sm text-gray-900">10/15/2023</td>
+                                <td class="text-sm text-gray-900">500</td>
+                                <td class="text-sm text-gray-900">487</td>
+                                <td class="text-sm text-gray-900">423</td>
+                                <td>
+                                    <div class="flex items-center">
+                                        <div class="w-16 mr-2">84.6%</div>
+                                        <div class="progress-bar" style="width: 100px;">
+                                            <div class="progress-fill high" style="width: 84.6%;"></div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td><span class="badge badge-success">Completed</span></td>
+                            </tr>
+                            <tr>
+                                <td class="text-sm font-medium text-gray-900">Product Launch</td>
+                                <td class="text-sm text-gray-900">11/05/2023</td>
+                                <td class="text-sm text-gray-900">200</td>
+                                <td class="text-sm text-gray-900">198</td>
+                                <td class="text-sm text-gray-900">176</td>
+                                <td>
+                                    <div class="flex items-center">
+                                        <div class="w-16 mr-2">88.0%</div>
+                                        <div class="progress-bar" style="width: 100px;">
+                                            <div class="progress-fill high" style="width: 88%;"></div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td><span class="badge badge-success">Completed</span></td>
+                            </tr>
+                            <tr>
+                                <td class="text-sm font-medium text-gray-900">Networking Workshop</td>
+                                <td class="text-sm text-gray-900">11/20/2023</td>
+                                <td class="text-sm text-gray-900">100</td>
+                                <td class="text-sm text-gray-900">74</td>
+                                <td class="text-sm text-gray-900">62</td>
+                                <td>
+                                    <div class="flex items-center">
+                                        <div class="w-16 mr-2">62.0%</div>
+                                        <div class="progress-bar" style="width: 100px;">
+                                            <div class="progress-fill medium" style="width: 62%;"></div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td><span class="badge badge-warning">In Progress</span></td>
+                            </tr>
+                            <tr>
+                                <td class="text-sm font-medium text-gray-90">Holiday Party</td>
+                                <td class="text-sm text-gray-900">12/15/2023</td>
+                                <td class="text-sm text-gray-900">300</td>
+                                <td class="text-sm text-gray-900">142</td>
+                                <td class="text-sm text-gray-900">98</td>
+                                <td>
+                                    <div class="flex items-center">
+                                        <div class="w-16 mr-2">32.7%</div>
+                                        <div class="progress-bar" style="width: 100px;">
+                                            <div class="progress-fill low" style="width: 32.7%;"></div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td><span class="badge badge-warning">Upcoming</span></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <!-- User Engagement Analytics -->
+            <div class="card">
+                <div class="card-header">
+                    <h2><i class="fas fa-user-engagement mr-2"></i> Top Engaged Users</h2>
+                    <div class="actions">
+                        <button><i class="fas fa-filter"></i> Filter</button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>User</th>
+                                    <th>RSVPs</th>
+                                    <th>Going</th>
+                                    <th>Engagement</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>
+                                        <div class="user-info">
+                                            <div class="user-avatar">
+                                                <i class="fas fa-user"></i>
+                                            </div>
+                                            <div>
+                                                <div class="text-sm font-medium">Sarah Johnson</div>
+                                                <div class="text-sm text-gray-600">sarah@example.com</div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td class="text-sm text-gray-900">24</td>
+                                    <td class="text-sm text-gray-900">18</td>
+                                    <td>
+                                        <div class="progress-bar" style="width: 100px;">
+                                            <div class="progress-fill high" style="width: 90%;"></div>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>
+                                        <div class="user-info">
+                                            <div class="user-avatar">
+                                                <i class="fas fa-user"></i>
+                                            </div>
+                                            <div>
+                                                <div class="text-sm font-medium">Michael Chen</div>
+                                                <div class="text-sm text-gray-600">michael@example.com</div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td class="text-sm text-gray-900">19</td>
+                                    <td class="text-sm text-gray-900">15</td>
+                                    <td>
+                                        <div class="progress-bar" style="width: 100px;">
+                                            <div class="progress-fill high" style="width: 85%;"></div>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>
+                                        <div class="user-info">
+                                            <div class="user-avatar">
+                                                <i class="fas fa-user"></i>
+                                            </div>
+                                            <div>
+                                                <div class="text-sm font-medium">Emma Wilson</div>
+                                                <div class="text-sm text-gray-600">emma@example.com</div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td class="text-sm text-gray-900">16</td>
+                                    <td class="text-sm text-gray-900">12</td>
+                                    <td>
+                                        <div class="progress-bar" style="width: 100px;">
+                                            <div class="progress-fill medium" style="width: 75%;"></div>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>
+                                        <div class="user-info">
+                                            <div class="user-avatar">
+                                                <i class="fas fa-user"></i>
+                                            </div>
+                                            <div>
+                                                <div class="text-sm font-medium">David Miller</div>
+                                                <div class="text-sm text-gray-600">david@example.com</div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td class="text-sm text-gray-900">14</td>
+                                    <td class="text-sm text-gray-900">10</td>
+                                    <td>
+                                        <div class="progress-bar" style="width: 100px;">
+                                            <div class="progress-fill medium" style="width: 65%;"></div>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Monthly Statistics -->
+            <div class="card">
+                <div class="card-header">
+                    <h2><i class="fas fa-calendar mr-2"></i> Monthly Event Statistics</h2>
+                </div>
+                <div class="card-body">
+                    <div class="chart-container">
+                        <canvas id="monthlyEventsChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Export Options -->
+        <div class="card">
+            <div class="card-header">
+                <h2><i class="fas fa-file-export mr-2"></i> Export Data</h2>
+            </div>
+            <div class="card-body">
+                <div class="export-options">
+                    <button class="export-btn event">
+                        <i class="fas fa-download mr-2"></i>Export Event Data
+                    </button>
+                    <button class="export-btn user">
+                        <i class="fas fa-download mr-2"></i>Export User Data
+                    </button>
+                    <button class="export-btn rsvp">
+                        <i class="fas fa-download mr-2"></i>Export RSVP Data
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Monthly Events Chart
+        const monthlyEventsCtx = document.getElementById('monthlyEventsChart').getContext('2d');
+        const monthlyEventsChart = new Chart(monthlyEventsCtx, {
+            type: 'bar',
+            data: {
+                labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+                datasets: [{
+                    label: 'Events Created',
+                    data: [3, 5, 4, 6, 8, 5, 6, 7, 9, 8, 10, 12],
+                    backgroundColor: 'rgba(67, 97, 238, 0.7)',
+                    borderColor: 'rgba(67, 97, 238, 1)',
+                    borderWidth: 1
+                }, {
+                    label: 'RSVPs',
+                    data: [45, 78, 65, 92, 120, 86, 104, 125, 158, 187, 210, 248],
+                    backgroundColor: 'rgba(76, 201, 240, 0.7)',
+                    borderColor: 'rgba(76, 201, 240, 1)',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                },
+                plugins: {
+                    legend: {
+                        position: 'top',
+                    }
+                }
+            }
+        });
+
+        // Add hover effects to cards
+        document.querySelectorAll('.card').forEach(card => {
+            card.addEventListener('mouseenter', () => {
+                card.style.transform = 'translateY(-5px)';
+            });
+
+            card.addEventListener('mouseleave', () => {
+                card.style.transform = 'translateY(0)';
+            });
+        });
+    </script>
+    {% endblock %}
+
+    </html>
