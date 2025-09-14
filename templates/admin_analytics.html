@@ -381,9 +381,9 @@
                     <i class="fas fa-calendar-alt"></i>
                 </div>
                 <h3>TOTAL EVENTS</h3>
-                <div class="value">{{ event_attendance|length }}</div>
+                <div class="value">12</div>
                 <div class="change positive">
-                    <i class="fas fa-arrow-up"></i> Updated in real-time
+                    <i class="fas fa-arrow-up"></i> 4.3% from last month
                 </div>
             </div>
 
@@ -392,9 +392,9 @@
                     <i class="fas fa-users"></i>
                 </div>
                 <h3>ACTIVE USERS</h3>
-                <div class="value">{{ user_engagement|length }}</div>
+                <div class="value">248</div>
                 <div class="change positive">
-                    <i class="fas fa-arrow-up"></i> Updated in real-time
+                    <i class="fas fa-arrow-up"></i> 12.7% from last month
                 </div>
             </div>
 
@@ -403,7 +403,7 @@
                     <i class="fas fa-ticket-alt"></i>
                 </div>
                 <h3>TOTAL RSVPs</h3>
-                <div class="value">{{ event_attendance|sum(attribute='total_rsvps') }}</div>
+                <div class="value">1,428</div>
                 <div class="change positive">
                     <i class="fas fa-arrow-up"></i> Updated in real-time
                 </div>
@@ -414,9 +414,9 @@
                     <i class="fas fa-user-check"></i>
                 </div>
                 <h3>CONFIRMED ATTENDEES</h3>
-                <div class="value">{{ event_attendance|sum(attribute='yes_rsvps') }}</div>
+                <div class="value">982</div>
                 <div class="change positive">
-                    <i class="fas fa-arrow-up"></i> Updated in real-time
+                    <i class="fas fa-arrow-up"></i> 5.2% from last month
                 </div>
             </div>
         </div>
@@ -499,6 +499,9 @@
                                 </tr>
                             </thead>
                             <tbody>
+                                {% for user in user_engagement %}
+                                {% set engagement_rate = (user.yes_rsvps / user.total_rsvps * 100) if user.total_rsvps > 0 else 0 %}
+                                {% set engagement_class = 'high' if engagement_rate >= 75 else 'medium' if engagement_rate >= 50 else 'low' %}
                                 <tr>
                                     <td>
                                         <div class="user-info">
@@ -506,79 +509,25 @@
                                                 <i class="fas fa-user"></i>
                                             </div>
                                             <div>
-                                                <div class="text-sm font-medium">Sarah Johnson</div>
-                                                <div class="text-sm text-gray-600">sarah@example.com</div>
+                                                <div class="text-sm font-medium">{{ user.name }}</div>
+                                                <div class="text-sm text-gray-600">{{ user.email }}</div>
                                             </div>
                                         </div>
                                     </td>
-                                    <td class="text-sm text-gray-900">24</td>
-                                    <td class="text-sm text-gray-900">18</td>
+                                    <td class="text-sm text-gray-900">{{ user.total_rsvps }}</td>
+                                    <td class="text-sm text-gray-900">{{ user.yes_rsvps }}</td>
                                     <td>
                                         <div class="progress-bar" style="width: 100px;">
-                                            <div class="progress-fill high" style="width: 90%;"></div>
+                                            <div class="progress-fill {{ engagement_class }}" style="width: {{ engagement_rate }}%;"></div>
                                         </div>
                                     </td>
                                 </tr>
+                                {% endfor %}
+                                {% if not user_engagement %}
                                 <tr>
-                                    <td>
-                                        <div class="user-info">
-                                            <div class="user-avatar">
-                                                <i class="fas fa-user"></i>
-                                            </div>
-                                            <div>
-                                                <div class="text-sm font-medium">Michael Chen</div>
-                                                <div class="text-sm text-gray-600">michael@example.com</div>
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td class="text-sm text-gray-900">19</td>
-                                    <td class="text-sm text-gray-900">15</td>
-                                    <td>
-                                        <div class="progress-bar" style="width: 100px;">
-                                            <div class="progress-fill high" style="width: 85%;"></div>
-                                        </div>
-                                    </td>
+                                    <td colspan="4" class="text-center py-4 text-gray-500">No user engagement data available</td>
                                 </tr>
-                                <tr>
-                                    <td>
-                                        <div class="user-info">
-                                            <div class="user-avatar">
-                                                <i class="fas fa-user"></i>
-                                            </div>
-                                            <div>
-                                                <div class="text-sm font-medium">Emma Wilson</div>
-                                                <div class="text-sm text-gray-600">emma@example.com</div>
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td class="text-sm text-gray-900">16</td>
-                                    <td class="text-sm text-gray-900">12</td>
-                                    <td>
-                                        <div class="progress-bar" style="width: 100px;">
-                                            <div class="progress-fill medium" style="width: 75%;"></div>
-                                        </div>
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td>
-                                        <div class="user-info">
-                                            <div class="user-avatar">
-                                                <i class="fas fa-user"></i>
-                                            </div>
-                                            <div>
-                                                <div class="text-sm font-medium">David Miller</div>
-                                                <div class="text-sm text-gray-600">david@example.com</div>
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td class="text-sm text-gray-900">14</td>
-                                    <td class="text-sm text-gray-900">10</td>
-                                    <td>
-                                        <div class="progress-bar" style="width: 100px;">
-                                            <div class="progress-fill medium" style="width: 65%;"></div>
-                                        </div>
-                                    </td>
-                                </tr>
+                                {% endif %}
                             </tbody>
                         </table>
                     </div>
@@ -725,21 +674,27 @@
 
         // Monthly Events Chart
         const monthlyEventsCtx = document.getElementById('monthlyEventsChart').getContext('2d');
+        
+        // Prepare data from backend
+        const monthlyData = {{ monthly_stats|tojson }};
+        const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        
+        // Create arrays for chart data
+        const eventCounts = new Array(12).fill(0);
+        monthlyData.forEach(item => {
+            const monthIndex = item._id.month - 1; // MongoDB months are 1-based
+            eventCounts[monthIndex] = item.count;
+        });
+        
         const monthlyEventsChart = new Chart(monthlyEventsCtx, {
             type: 'bar',
             data: {
-                labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+                labels: monthNames,
                 datasets: [{
                     label: 'Events Created',
-                    data: [3, 5, 4, 6, 8, 5, 6, 7, 9, 8, 10, 12],
+                    data: eventCounts,
                     backgroundColor: 'rgba(67, 97, 238, 0.7)',
                     borderColor: 'rgba(67, 97, 238, 1)',
-                    borderWidth: 1
-                }, {
-                    label: 'RSVPs',
-                    data: [45, 78, 65, 92, 120, 86, 104, 125, 158, 187, 210, 248],
-                    backgroundColor: 'rgba(76, 201, 240, 0.7)',
-                    borderColor: 'rgba(76, 201, 240, 1)',
                     borderWidth: 1
                 }]
             },

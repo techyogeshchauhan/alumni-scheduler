@@ -198,34 +198,18 @@ function toggleUserStatus(userId, currentStatus) {
         const form = document.createElement('form');
         form.method = 'POST';
         form.action = `/admin/users/${userId}/toggle-status`;
-        
-        // Add CSRF token
-        const csrfInput = document.createElement('input');
-        csrfInput.type = 'hidden';
-        csrfInput.name = 'csrf_token';
-        csrfInput.value = document.querySelector('meta[name=csrf-token]').getAttribute('content');
-        form.appendChild(csrfInput);
-        
         document.body.appendChild(form);
         form.submit();
     }
 }
 
-function blockUser(userId, isBlocked) {
-    const action = isBlocked ? 'unblock' : 'block';
+function blockUser(userId, currentBlockedStatus) {
+    const action = currentBlockedStatus ? 'unblock' : 'block';
     if (confirm(`Are you sure you want to ${action} this user?`)) {
         // Create a form to submit as POST
         const form = document.createElement('form');
         form.method = 'POST';
         form.action = `/admin/users/${userId}/toggle-block`;
-        
-        // Add CSRF token
-        const csrfInput = document.createElement('input');
-        csrfInput.type = 'hidden';
-        csrfInput.name = 'csrf_token';
-        csrfInput.value = document.querySelector('meta[name=csrf-token]').getAttribute('content');
-        form.appendChild(csrfInput);
-        
         document.body.appendChild(form);
         form.submit();
     }

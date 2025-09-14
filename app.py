@@ -7,24 +7,27 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 import os
 from dotenv import load_dotenv
+from flask_moment import Moment
 from datetime import datetime, timedelta
 import uuid
 import json
 from functools import wraps
-import secrets
+import secrets # --- MODIFIED ---: Imported the secrets module
 import re
 import csv
 from io import StringIO
-from flask_wtf.csrf import CSRFProtect 
-from flask_limiter import Limiter 
-from flask_limiter.util import get_remote_address 
+from flask_wtf.csrf import CSRFProtect
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 
 # Load environment variables
 load_dotenv()
 
 # Initialize Flask app
 app = Flask(__name__)
-app.secret_key = os.getenv("SECRET_KEY", "a-very-secret-key-that-you-should-change")
+moment = Moment(app)
+# --- MODIFIED ---: Use a random secret key on each startup to invalidate old sessions.
+app.secret_key = secrets.token_hex(16)
 
 # --- NEW: CSRF Protection Setup ---
 app.config['WTF_CSRF_ENABLED'] = True
@@ -169,7 +172,7 @@ def before_request():
 def create_default_admin():
     if not users_collection.find_one({"is_admin": True}):
         admin_user = {
-            "name": "Admin User", "email": "admin@alumni-event-scheduler.com",
+            "name": "Admin User", "email": "yogesh.chauhan.ai@gmail.com",
             "password": generate_password_hash("admin123"), "is_admin": True,
             "is_active": True, "phone": "+1234567890", "grad_year": "2020",
             "profile_picture": "", "preferences": {"email": True, "sms": False, "push": True},
@@ -329,8 +332,9 @@ def landing():
     """Alternative landing page for marketing"""
     return redirect(url_for("index"))
 
+# --- MODIFIED ROUTE ---
 @app.route("/register", methods=["GET", "POST"])
-@limiter.limit("5 per hour") # --- NEW: Rate limiting
+@limiter.limit("5 per hour")
 def register():
     if request.method == "POST":
         email = request.form["email"]
@@ -339,24 +343,30 @@ def register():
         name = request.form["name"]
         grad_year = request.form["grad_year"]
         
-        # --- (Validation logic is the same) ---
+        # --- (Your validation logic should be here, e.g., checking if user exists) ---
+        if users_collection.find_one({"email": email}):
+            flash("An account with this email already exists.", "error")
+            return redirect(url_for("register"))
+        if password != confirm_password:
+            flash("Passwords do not match.", "error")
+            return redirect(url_for("register"))
+        if len(password) < 6:
+            flash("Password must be at least 6 characters long.", "error")
+            return redirect(url_for("register"))
         
-        # --- MODIFIED: Added new fields on registration ---
         user_data = {
             "email": email,
             "password": generate_password_hash(password, method="pbkdf2:sha256"),
             "name": name.strip(), "grad_year": int(grad_year),
-            "is_admin": users_collection.count_documents({}) == 0,
+            "is_admin": users_collection.count_documents({}) == 0, # First user is an admin
             "is_active": True, "profile_picture": "", "created_at": datetime.now(),
             "last_login": None,
-            # --- NEW for security ---
             "failed_login_attempts": 0, "lockout_until": None,
-            # --- NEW for enhanced profile ---
             "bio": "", "skills": [], "interests": [],
             "social_links": {"linkedin": "", "twitter": "", "github": ""},
-            # --- NEW for directory privacy ---
             "profile_privacy": "alumni_only" 
         }
+<<<<<<< HEAD
         result = users_collection.insert_one(user_data)
         
         # Track registration activity
@@ -368,6 +378,27 @@ def register():
         
         flash("Registration successful! Welcome to the alumni community!", "success")
         return redirect(url_for("alumni_dashboard"))
+=======
+        
+        # Insert the user and get the result, which contains the new ID
+        result = users_collection.insert_one(user_data)
+        new_user_id = result.inserted_id
+
+        # Automatically log the user in
+        set_user_session("alumni", new_user_id)
+
+        # Check if the new user is an admin and redirect accordingly
+        if user_data["is_admin"]:
+            # If they are an admin, also set the admin session
+            set_user_session("admin", new_user_id)
+            flash(f"Registration successful! Welcome, Admin {name.strip()}!", "success")
+            return redirect(url_for("admin_dashboard"))
+        else:
+            # If they are a regular alumni, redirect to the alumni dashboard
+            flash(f"Registration successful! Welcome, {name.strip()}!", "success")
+            return redirect(url_for("alumni_dashboard"))
+        
+>>>>>>> 5700fb2400ce921bd01a9329daf1ffb3ef5afe28
     return render_template("register.html")
 
 @app.route("/login", methods=["GET", "POST"])
@@ -425,7 +456,7 @@ def login():
                 users_collection.update_one({"_id": user["_id"]}, update_data)
             else:
                 flash("Invalid email or password.", "error")
-        return redirect(url_for("login"))
+            return redirect(url_for("login"))
     return render_template("login.html")
 
 # --- Forgot/Reset Password Routes ---
@@ -475,9 +506,9 @@ def forgot_password():
                     
                     <div style="text-align: center; margin: 30px 0;">
                         <a href="{reset_url}" 
-                           style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
-                                  color: white; padding: 15px 30px; text-decoration: none; 
-                                  border-radius: 8px; font-weight: bold; display: inline-block;">
+                            style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+                                    color: white; padding: 15px 30px; text-decoration: none; 
+                                    border-radius: 8px; font-weight: bold; display: inline-block;">
                             Reset Password
                         </a>
                     </div>
@@ -576,6 +607,8 @@ def admin_logout():
     flash("Admin logged out successfully!", "success")
     return redirect(url_for("admin_login"))
 
+# ... (The rest of your code remains the same) ...
+
 # --- Profile & Dashboard ---
 @app.route("/dashboard")
 @alumni_required
@@ -604,12 +637,15 @@ def alumni_dashboard():
         "active_jobs": jobs_collection.count_documents({"is_active": True}),
         "user_rsvps": rsvps_collection.count_documents({"user_id": ObjectId(current_user.id)})
     }
+<<<<<<< HEAD
     
     # Get recent user activity
     recent_activity = list(user_activity_collection.find({
         "user_id": ObjectId(current_user.id)
     }).sort("timestamp", -1).limit(5))
     
+=======
+>>>>>>> 5700fb2400ce921bd01a9329daf1ffb3ef5afe28
     return render_template("alumni_dashboard.html", 
                          upcoming_events=upcoming_events,
                          user_rsvps=user_rsvps,
@@ -1110,6 +1146,13 @@ def rsvp(event_id):
         admin_portal_link = request.url_root.rstrip('/') + url_for('admin_event_rsvps', event_id=event_id)
         
         for admin in admin_users:
+            # Determine status color
+            status_color = '#28a745' if status == 'Yes' else '#ffc107' if status == 'Maybe' else '#dc3545'
+            
+            # Build dietary restrictions and comments sections
+            dietary_section = f'<p style="margin: 0 0 10px 0;"><strong>🍽️ Dietary Restrictions:</strong> {dietary_restrictions}</p>' if dietary_restrictions else ''
+            comments_section = f'<p style="margin: 0;"><strong>💬 Comments:</strong> {comments}</p>' if comments else ''
+            
             admin_email_body = f"""
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%); padding: 20px; border-radius: 15px;">
                 <div style="background: white; padding: 30px; border-radius: 10px; box-shadow: 0 10px 30px rgba(0,0,0,0.1);">
@@ -1128,10 +1171,10 @@ def rsvp(event_id):
                             <p style="margin: 0 0 10px 0;"><strong>📧 Email:</strong> {current_user.email}</p>
                             <p style="margin: 0 0 10px 0;"><strong>📅 Event Date:</strong> {event['date'].strftime('%B %d, %Y at %I:%M %p')}</p>
                             <p style="margin: 0 0 10px 0;"><strong>📍 Location:</strong> {event['location']}</p>
-                            <p style="margin: 0 0 10px 0;"><strong>✅ RSVP Status:</strong> <span style="color: {'#28a745' if status == 'Yes' else '#ffc107' if status == 'Maybe' else '#dc3545'}; font-weight: bold;">{status}</span></p>
+                            <p style="margin: 0 0 10px 0;"><strong>✅ RSVP Status:</strong> <span style="color: {status_color}; font-weight: bold;">{status}</span></p>
                             <p style="margin: 0 0 10px 0;"><strong>👥 Guest Count:</strong> {guest_count}</p>
-                            {f'<p style="margin: 0 0 10px 0;"><strong>🍽️ Dietary Restrictions:</strong> {dietary_restrictions}</p>' if dietary_restrictions else ''}
-                            {f'<p style="margin: 0;"><strong>💬 Comments:</strong> {comments}</p>' if comments else ''}
+                            {dietary_section}
+                            {comments_section}
                         </div>
                     </div>
                     
@@ -1150,6 +1193,19 @@ def rsvp(event_id):
             """
             
             send_notification_email([admin["email"]], f"📝 New RSVP: {current_user.name} responded to {event['title']}", admin_email_body)
+            
+            # Create in-app notification for admin
+            admin_notification = {
+                "user_id": admin["_id"],
+                "title": "📝 New RSVP Response",
+                "message": f"{current_user.name} responded '{status}' to '{event['title']}'",
+                "type": "rsvp_response",
+                "event_id": ObjectId(event_id),
+                "created_at": datetime.now(),
+                "read": False,
+                "action_url": f"/admin/events/{event_id}/rsvps"
+            }
+            notifications_collection.insert_one(admin_notification)
     
     return redirect(url_for("event_detail", event_id=event_id))
 
@@ -1667,7 +1723,20 @@ def admin_settings():
 @app.route("/admin/analytics")
 @admin_required_new
 def admin_analytics():
-    """Advanced analytics dashboard"""
+    """Advanced analytics dashboard with real statistics"""
+    # Get comprehensive statistics
+    stats = {
+        "total_users": users_collection.count_documents({}),
+        "active_users": users_collection.count_documents({"is_active": True}),
+        "total_events": events_collection.count_documents({}),
+        "upcoming_events": events_collection.count_documents({"date": {"$gte": datetime.now()}}),
+        "total_rsvps": rsvps_collection.count_documents({}),
+        "total_jobs": jobs_collection.count_documents({"is_active": True}),
+        "total_notifications": notifications_collection.count_documents({}),
+        "admin_users": users_collection.count_documents({"is_admin": True}),
+        "alumni_users": users_collection.count_documents({"is_admin": False, "is_active": True})
+    }
+    
     # Event attendance analytics
     event_attendance = list(events_collection.aggregate([
         {
@@ -1683,12 +1752,30 @@ def admin_analytics():
                 "title": 1,
                 "date": 1,
                 "capacity": 1,
+                "category": 1,
+                "location": 1,
                 "total_rsvps": {"$size": "$rsvps"},
                 "yes_rsvps": {
                     "$size": {
                         "$filter": {
                             "input": "$rsvps",
                             "cond": {"$eq": ["$$this.status", "Yes"]}
+                        }
+                    }
+                },
+                "maybe_rsvps": {
+                    "$size": {
+                        "$filter": {
+                            "input": "$rsvps",
+                            "cond": {"$eq": ["$$this.status", "Maybe"]}
+                        }
+                    }
+                },
+                "no_rsvps": {
+                    "$size": {
+                        "$filter": {
+                            "input": "$rsvps",
+                            "cond": {"$eq": ["$$this.status", "No"]}
                         }
                     }
                 }
@@ -1711,6 +1798,8 @@ def admin_analytics():
             "$project": {
                 "name": 1,
                 "email": 1,
+                "grad_year": 1,
+                "is_active": 1,
                 "total_rsvps": {"$size": "$rsvps"},
                 "yes_rsvps": {
                     "$size": {
@@ -1720,9 +1809,11 @@ def admin_analytics():
                         }
                     }
                 },
-                "last_rsvp": {"$max": "$rsvps.rsvp_date"}
+                "last_rsvp": {"$max": "$rsvps.rsvp_date"},
+                "created_at": 1
             }
         },
+        {"$match": {"is_active": True, "is_admin": False}},
         {"$sort": {"total_rsvps": -1}},
         {"$limit": 10}
     ]))
@@ -1742,10 +1833,22 @@ def admin_analytics():
         {"$limit": 12}
     ]))
     
+    # Category statistics
+    category_stats = list(events_collection.aggregate([
+        {"$group": {"_id": "$category", "count": {"$sum": 1}}},
+        {"$sort": {"count": -1}}
+    ]))
+    
+    # Recent activity
+    recent_events = list(events_collection.find().sort("created_at", -1).limit(5))
+    recent_users = list(users_collection.find().sort("created_at", -1).limit(5))
+    
     return render_template("admin_analytics.html", 
+                           stats=stats,
                            event_attendance=event_attendance,
                            user_engagement=user_engagement,
                            monthly_stats=monthly_stats,
+<<<<<<< HEAD
                            now=datetime.now())
 
 @app.route("/admin/export/events")
@@ -1880,6 +1983,12 @@ def export_rsvps_data():
     response.headers['Content-Disposition'] = f'attachment; filename=rsvps_data_{datetime.now().strftime("%Y%m%d_%H%M%S")}.csv'
     
     return response
+=======
+                           category_stats=category_stats,
+                           recent_events=recent_events,
+                           now=datetime.now(),
+                           recent_users=recent_users)
+>>>>>>> 5700fb2400ce921bd01a9329daf1ffb3ef5afe28
 
 @app.route("/admin/backup")
 @admin_required_new
@@ -2110,6 +2219,7 @@ def api_event_attendees(event_id):
     
     return jsonify(attendees)
 
+<<<<<<< HEAD
 @app.route("/api/user/activity")
 @general_login_required
 def api_user_activity():
@@ -2130,6 +2240,8 @@ def api_user_activity():
     
     return jsonify(activities)
 
+=======
+>>>>>>> 5700fb2400ce921bd01a9329daf1ffb3ef5afe28
 if __name__ == "__main__":
     app.run(debug=True)
 # if __name__ == "__main__":
