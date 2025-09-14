@@ -366,7 +366,7 @@ def register():
             "social_links": {"linkedin": "", "twitter": "", "github": ""},
             "profile_privacy": "alumni_only" 
         }
-<<<<<<< HEAD
+
         result = users_collection.insert_one(user_data)
         
         # Track registration activity
@@ -378,7 +378,6 @@ def register():
         
         flash("Registration successful! Welcome to the alumni community!", "success")
         return redirect(url_for("alumni_dashboard"))
-=======
         
         # Insert the user and get the result, which contains the new ID
         result = users_collection.insert_one(user_data)
@@ -398,7 +397,7 @@ def register():
             flash(f"Registration successful! Welcome, {name.strip()}!", "success")
             return redirect(url_for("alumni_dashboard"))
         
->>>>>>> 5700fb2400ce921bd01a9329daf1ffb3ef5afe28
+        
     return render_template("register.html")
 
 @app.route("/login", methods=["GET", "POST"])
@@ -637,20 +636,17 @@ def alumni_dashboard():
         "active_jobs": jobs_collection.count_documents({"is_active": True}),
         "user_rsvps": rsvps_collection.count_documents({"user_id": ObjectId(current_user.id)})
     }
-<<<<<<< HEAD
     
     # Get recent user activity
     recent_activity = list(user_activity_collection.find({
         "user_id": ObjectId(current_user.id)
     }).sort("timestamp", -1).limit(5))
     
-=======
->>>>>>> 5700fb2400ce921bd01a9329daf1ffb3ef5afe28
     return render_template("alumni_dashboard.html", 
                          upcoming_events=upcoming_events,
                          user_rsvps=user_rsvps,
                          recent_jobs=recent_jobs,
-                         recent_activity=recent_activity,
+                         recent_activity=recent_activity,   
                          stats=stats)
 
 @app.route("/profile")
@@ -1848,13 +1844,12 @@ def admin_analytics():
                            event_attendance=event_attendance,
                            user_engagement=user_engagement,
                            monthly_stats=monthly_stats,
-<<<<<<< HEAD
-                           now=datetime.now())
+                           now=datetime.now()) # --- MODIFIED ---
 
 @app.route("/admin/export/events")
 @admin_required_new
 def export_events_data():
-    """Export all events data as CSV"""
+    """Export all events data as CSV"""         # --- MODIFIED ---
     import csv
     from flask import make_response
     
@@ -1899,7 +1894,7 @@ def export_events_data():
 @app.route("/admin/export/users")
 @admin_required_new
 def export_users_data():
-    """Export all users data as CSV"""
+    """Export all users data as CSV"""         # --- MODIFIED ---
     import csv
     from flask import make_response
     
@@ -1983,12 +1978,6 @@ def export_rsvps_data():
     response.headers['Content-Disposition'] = f'attachment; filename=rsvps_data_{datetime.now().strftime("%Y%m%d_%H%M%S")}.csv'
     
     return response
-=======
-                           category_stats=category_stats,
-                           recent_events=recent_events,
-                           now=datetime.now(),
-                           recent_users=recent_users)
->>>>>>> 5700fb2400ce921bd01a9329daf1ffb3ef5afe28
 
 @app.route("/admin/backup")
 @admin_required_new
@@ -2219,7 +2208,6 @@ def api_event_attendees(event_id):
     
     return jsonify(attendees)
 
-<<<<<<< HEAD
 @app.route("/api/user/activity")
 @general_login_required
 def api_user_activity():
@@ -2240,8 +2228,7 @@ def api_user_activity():
     
     return jsonify(activities)
 
-=======
->>>>>>> 5700fb2400ce921bd01a9329daf1ffb3ef5afe28
+
 if __name__ == "__main__":
     app.run(debug=True)
 # if __name__ == "__main__":
