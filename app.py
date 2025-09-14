@@ -44,7 +44,7 @@ app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'pdf', 'doc', 'docx'}
 
 # MongoDB setup
-client = MongoClient(os.getenv("MONGO_URI", "mongodb+srv://alu:262122@evnet.k1uvmwe.mongodb.net/?retryWrites=true&w=majority&appName=evnet"))
+client = MongoClient(os.getenv("MONGO_URI","mongodb://localhost:27017"))
 db = client["alumni_db"]
 users_collection = db["users"]
 events_collection = db["events"]
@@ -137,7 +137,7 @@ os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 def create_default_admin():
     if not users_collection.find_one({"is_admin": True}):
         admin_user = {
-            "name": "Admin User", "email": "admin@alumni-event-scheduler.com",
+            "name": "Admin User", "email": "yogesh.chauhan.ai@gmail.com",
             "password": generate_password_hash("admin123"), "is_admin": True,
             "is_active": True, "phone": "+1234567890", "grad_year": "2020",
             "profile_picture": "", "preferences": {"email": True, "sms": False, "push": True},
@@ -1588,7 +1588,20 @@ def admin_settings():
 @app.route("/admin/analytics")
 @admin_required_new
 def admin_analytics():
-    """Advanced analytics dashboard"""
+    """Advanced analytics dashboard with real statistics"""
+    # Get comprehensive statistics
+    stats = {
+        "total_users": users_collection.count_documents({}),
+        "active_users": users_collection.count_documents({"is_active": True}),
+        "total_events": events_collection.count_documents({}),
+        "upcoming_events": events_collection.count_documents({"date": {"$gte": datetime.now()}}),
+        "total_rsvps": rsvps_collection.count_documents({}),
+        "total_jobs": jobs_collection.count_documents({"is_active": True}),
+        "total_notifications": notifications_collection.count_documents({}),
+        "admin_users": users_collection.count_documents({"is_admin": True}),
+        "alumni_users": users_collection.count_documents({"is_admin": False, "is_active": True})
+    }
+    
     # Event attendance analytics
     event_attendance = list(events_collection.aggregate([
         {
@@ -1604,12 +1617,30 @@ def admin_analytics():
                 "title": 1,
                 "date": 1,
                 "capacity": 1,
+                "category": 1,
+                "location": 1,
                 "total_rsvps": {"$size": "$rsvps"},
                 "yes_rsvps": {
                     "$size": {
                         "$filter": {
                             "input": "$rsvps",
                             "cond": {"$eq": ["$$this.status", "Yes"]}
+                        }
+                    }
+                },
+                "maybe_rsvps": {
+                    "$size": {
+                        "$filter": {
+                            "input": "$rsvps",
+                            "cond": {"$eq": ["$$this.status", "Maybe"]}
+                        }
+                    }
+                },
+                "no_rsvps": {
+                    "$size": {
+                        "$filter": {
+                            "input": "$rsvps",
+                            "cond": {"$eq": ["$$this.status", "No"]}
                         }
                     }
                 }
@@ -1632,6 +1663,8 @@ def admin_analytics():
             "$project": {
                 "name": 1,
                 "email": 1,
+                "grad_year": 1,
+                "is_active": 1,
                 "total_rsvps": {"$size": "$rsvps"},
                 "yes_rsvps": {
                     "$size": {
@@ -1641,9 +1674,11 @@ def admin_analytics():
                         }
                     }
                 },
-                "last_rsvp": {"$max": "$rsvps.rsvp_date"}
+                "last_rsvp": {"$max": "$rsvps.rsvp_date"},
+                "created_at": 1
             }
         },
+        {"$match": {"is_active": True, "is_admin": False}},
         {"$sort": {"total_rsvps": -1}},
         {"$limit": 10}
     ]))
@@ -1663,10 +1698,24 @@ def admin_analytics():
         {"$limit": 12}
     ]))
     
+    # Category statistics
+    category_stats = list(events_collection.aggregate([
+        {"$group": {"_id": "$category", "count": {"$sum": 1}}},
+        {"$sort": {"count": -1}}
+    ]))
+    
+    # Recent activity
+    recent_events = list(events_collection.find().sort("created_at", -1).limit(5))
+    recent_users = list(users_collection.find().sort("created_at", -1).limit(5))
+    
     return render_template("admin_analytics.html", 
+                           stats=stats,
                            event_attendance=event_attendance,
                            user_engagement=user_engagement,
-                           monthly_stats=monthly_stats)
+                           monthly_stats=monthly_stats,
+                           category_stats=category_stats,
+                           recent_events=recent_events,
+                           recent_users=recent_users)
 
 @app.route("/admin/backup")
 @admin_required_new
@@ -1871,7 +1920,7 @@ def api_event_attendees(event_id):
     
     return jsonify(attendees)
 
-# if __name__ == "__main__":
-#     app.run(debug=True)
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+    app.run(debug=True)
+# if __name__ == "__main__":
+#     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
