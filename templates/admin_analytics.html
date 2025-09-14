@@ -1,6 +1,8 @@
 {% extends "base.html" %}
 {% block title %}Analytics Dashboard - Alumni Event Scheduler{% endblock %}
 {% block content %}
+<!-- Chart.js CDN -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <style>
     :root {
         --primary: #4361ee;
@@ -379,9 +381,9 @@
                     <i class="fas fa-calendar-alt"></i>
                 </div>
                 <h3>TOTAL EVENTS</h3>
-                <div class="value">12</div>
+                <div class="value">{{ event_attendance|length }}</div>
                 <div class="change positive">
-                    <i class="fas fa-arrow-up"></i> 4.3% from last month
+                    <i class="fas fa-arrow-up"></i> Updated in real-time
                 </div>
             </div>
 
@@ -390,9 +392,9 @@
                     <i class="fas fa-users"></i>
                 </div>
                 <h3>ACTIVE USERS</h3>
-                <div class="value">248</div>
+                <div class="value">{{ user_engagement|length }}</div>
                 <div class="change positive">
-                    <i class="fas fa-arrow-up"></i> 12.7% from last month
+                    <i class="fas fa-arrow-up"></i> Updated in real-time
                 </div>
             </div>
 
@@ -401,9 +403,9 @@
                     <i class="fas fa-ticket-alt"></i>
                 </div>
                 <h3>TOTAL RSVPs</h3>
-                <div class="value">1,428</div>
+                <div class="value">{{ event_attendance|sum(attribute='total_rsvps') }}</div>
                 <div class="change positive">
-                    <i class="fas fa-arrow-up"></i> 8.6% from last month
+                    <i class="fas fa-arrow-up"></i> Updated in real-time
                 </div>
             </div>
 
@@ -412,9 +414,9 @@
                     <i class="fas fa-user-check"></i>
                 </div>
                 <h3>CONFIRMED ATTENDEES</h3>
-                <div class="value">982</div>
+                <div class="value">{{ event_attendance|sum(attribute='yes_rsvps') }}</div>
                 <div class="change positive">
-                    <i class="fas fa-arrow-up"></i> 5.2% from last month
+                    <i class="fas fa-arrow-up"></i> Updated in real-time
                 </div>
             </div>
         </div>
@@ -443,70 +445,33 @@
                             </tr>
                         </thead>
                         <tbody>
+                            {% for event in event_attendance %}
+                            {% set attendance_rate = (event.yes_rsvps / event.capacity * 100) if event.capacity > 0 else 0 %}
+                            {% set attendance_class = 'high' if attendance_rate >= 75 else 'medium' if attendance_rate >= 50 else 'low' %}
+                            {% set event_status = 'Completed' if event.date < now else 'Upcoming' %}
+                            {% set status_class = 'success' if event_status == 'Completed' else 'warning' %}
                             <tr>
-                                <td class="text-sm font-medium text-gray-900">Tech Conference 2023</td>
-                                <td class="text-sm text-gray-900">10/15/2023</td>
-                                <td class="text-sm text-gray-900">500</td>
-                                <td class="text-sm text-gray-900">487</td>
-                                <td class="text-sm text-gray-900">423</td>
+                                <td class="text-sm font-medium text-gray-900">{{ event.title }}</td>
+                                <td class="text-sm text-gray-900">{{ event.date.strftime('%m/%d/%Y') }}</td>
+                                <td class="text-sm text-gray-900">{{ event.capacity }}</td>
+                                <td class="text-sm text-gray-900">{{ event.total_rsvps }}</td>
+                                <td class="text-sm text-gray-900">{{ event.yes_rsvps }}</td>
                                 <td>
                                     <div class="flex items-center">
-                                        <div class="w-16 mr-2">84.6%</div>
+                                        <div class="w-16 mr-2">{{ '%.1f'|format(attendance_rate) }}%</div>
                                         <div class="progress-bar" style="width: 100px;">
-                                            <div class="progress-fill high" style="width: 84.6%;"></div>
+                                            <div class="progress-fill {{ attendance_class }}" style="width: {{ attendance_rate }}%;"></div>
                                         </div>
                                     </div>
                                 </td>
-                                <td><span class="badge badge-success">Completed</span></td>
+                                <td><span class="badge badge-{{ status_class }}">{{ event_status }}</span></td>
                             </tr>
+                            {% endfor %}
+                            {% if not event_attendance %}
                             <tr>
-                                <td class="text-sm font-medium text-gray-900">Product Launch</td>
-                                <td class="text-sm text-gray-900">11/05/2023</td>
-                                <td class="text-sm text-gray-900">200</td>
-                                <td class="text-sm text-gray-900">198</td>
-                                <td class="text-sm text-gray-900">176</td>
-                                <td>
-                                    <div class="flex items-center">
-                                        <div class="w-16 mr-2">88.0%</div>
-                                        <div class="progress-bar" style="width: 100px;">
-                                            <div class="progress-fill high" style="width: 88%;"></div>
-                                        </div>
-                                    </div>
-                                </td>
-                                <td><span class="badge badge-success">Completed</span></td>
+                                <td colspan="7" class="text-center py-4 text-gray-500">No events found</td>
                             </tr>
-                            <tr>
-                                <td class="text-sm font-medium text-gray-900">Networking Workshop</td>
-                                <td class="text-sm text-gray-900">11/20/2023</td>
-                                <td class="text-sm text-gray-900">100</td>
-                                <td class="text-sm text-gray-900">74</td>
-                                <td class="text-sm text-gray-900">62</td>
-                                <td>
-                                    <div class="flex items-center">
-                                        <div class="w-16 mr-2">62.0%</div>
-                                        <div class="progress-bar" style="width: 100px;">
-                                            <div class="progress-fill medium" style="width: 62%;"></div>
-                                        </div>
-                                    </div>
-                                </td>
-                                <td><span class="badge badge-warning">In Progress</span></td>
-                            </tr>
-                            <tr>
-                                <td class="text-sm font-medium text-gray-90">Holiday Party</td>
-                                <td class="text-sm text-gray-900">12/15/2023</td>
-                                <td class="text-sm text-gray-900">300</td>
-                                <td class="text-sm text-gray-900">142</td>
-                                <td class="text-sm text-gray-900">98</td>
-                                <td>
-                                    <div class="flex items-center">
-                                        <div class="w-16 mr-2">32.7%</div>
-                                        <div class="progress-bar" style="width: 100px;">
-                                            <div class="progress-fill low" style="width: 32.7%;"></div>
-                                        </div>
-                                    </div>
-                                </td>
-                                <td><span class="badge badge-warning">Upcoming</span></td>
-                            </tr>
+                            {% endif %}
                         </tbody>
                     </table>
                 </div>
@@ -640,13 +605,13 @@
             </div>
             <div class="card-body">
                 <div class="export-options">
-                    <button class="export-btn event">
+                    <button class="export-btn event" onclick="exportData('events')">
                         <i class="fas fa-download mr-2"></i>Export Event Data
                     </button>
-                    <button class="export-btn user">
+                    <button class="export-btn user" onclick="exportData('users')">
                         <i class="fas fa-download mr-2"></i>Export User Data
                     </button>
-                    <button class="export-btn rsvp">
+                    <button class="export-btn rsvp" onclick="exportData('rsvps')">
                         <i class="fas fa-download mr-2"></i>Export RSVP Data
                     </button>
                 </div>
@@ -655,6 +620,109 @@
     </div>
 
     <script>
+        // Export data function
+        function exportData(type) {
+            const exportUrls = {
+                'events': '/admin/export/events',
+                'users': '/admin/export/users',
+                'rsvps': '/admin/export/rsvps'
+            };
+            
+            if (exportUrls[type]) {
+                // Create a temporary link to trigger download
+                const link = document.createElement('a');
+                link.href = exportUrls[type];
+                link.download = '';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            }
+        }
+
+        // Filter and sort functionality
+        function initializeFilters() {
+            // Add filter dropdowns
+            const eventTable = document.querySelector('table');
+            if (eventTable) {
+                const headerRow = eventTable.querySelector('thead tr');
+                if (headerRow) {
+                    // Add filter inputs to header
+                    const cells = headerRow.querySelectorAll('th');
+                    cells.forEach((cell, index) => {
+                        if (index === 0) { // Event column
+                            const filterInput = document.createElement('input');
+                            filterInput.type = 'text';
+                            filterInput.placeholder = 'Filter events...';
+                            filterInput.style.cssText = 'width: 100%; padding: 4px; border: 1px solid #ddd; border-radius: 4px; font-size: 12px;';
+                            filterInput.addEventListener('input', (e) => filterTable(e.target.value, index));
+                            cell.appendChild(filterInput);
+                        } else if (index === 6) { // Status column
+                            const statusSelect = document.createElement('select');
+                            statusSelect.innerHTML = '<option value="">All Status</option><option value="Completed">Completed</option><option value="Upcoming">Upcoming</option>';
+                            statusSelect.style.cssText = 'width: 100%; padding: 4px; border: 1px solid #ddd; border-radius: 4px; font-size: 12px;';
+                            statusSelect.addEventListener('change', (e) => filterTable(e.target.value, index));
+                            cell.appendChild(statusSelect);
+                        }
+                    });
+                }
+            }
+        }
+
+        function filterTable(filterValue, columnIndex) {
+            const table = document.querySelector('table');
+            const rows = table.querySelectorAll('tbody tr');
+            
+            rows.forEach(row => {
+                const cell = row.cells[columnIndex];
+                if (cell) {
+                    const cellText = cell.textContent.toLowerCase();
+                    const filterText = filterValue.toLowerCase();
+                    
+                    if (cellText.includes(filterText)) {
+                        row.style.display = '';
+                    } else {
+                        row.style.display = 'none';
+                    }
+                }
+            });
+        }
+
+        // Sort functionality
+        function sortTable(columnIndex) {
+            const table = document.querySelector('table');
+            const tbody = table.querySelector('tbody');
+            const rows = Array.from(tbody.querySelectorAll('tr'));
+            
+            rows.sort((a, b) => {
+                const aText = a.cells[columnIndex].textContent.trim();
+                const bText = b.cells[columnIndex].textContent.trim();
+                
+                // Try to parse as numbers first
+                const aNum = parseFloat(aText);
+                const bNum = parseFloat(bText);
+                
+                if (!isNaN(aNum) && !isNaN(bNum)) {
+                    return aNum - bNum;
+                }
+                
+                // Otherwise sort as strings
+                return aText.localeCompare(bText);
+            });
+            
+            // Clear tbody and re-append sorted rows
+            tbody.innerHTML = '';
+            rows.forEach(row => tbody.appendChild(row));
+        }
+
+        // Add click handlers to table headers for sorting
+        function addSortHandlers() {
+            const headers = document.querySelectorAll('th');
+            headers.forEach((header, index) => {
+                header.style.cursor = 'pointer';
+                header.addEventListener('click', () => sortTable(index));
+            });
+        }
+
         // Monthly Events Chart
         const monthlyEventsCtx = document.getElementById('monthlyEventsChart').getContext('2d');
         const monthlyEventsChart = new Chart(monthlyEventsCtx, {
@@ -700,6 +768,12 @@
             card.addEventListener('mouseleave', () => {
                 card.style.transform = 'translateY(0)';
             });
+        });
+
+        // Initialize filters and sorting when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeFilters();
+            addSortHandlers();
         });
     </script>
     {% endblock %}

@@ -198,6 +198,14 @@ function toggleUserStatus(userId, currentStatus) {
         const form = document.createElement('form');
         form.method = 'POST';
         form.action = `/admin/users/${userId}/toggle-status`;
+        
+        // Add CSRF token
+        const csrfInput = document.createElement('input');
+        csrfInput.type = 'hidden';
+        csrfInput.name = 'csrf_token';
+        csrfInput.value = document.querySelector('meta[name=csrf-token]').getAttribute('content');
+        form.appendChild(csrfInput);
+        
         document.body.appendChild(form);
         form.submit();
     }
@@ -210,6 +218,14 @@ function blockUser(userId, isBlocked) {
         const form = document.createElement('form');
         form.method = 'POST';
         form.action = `/admin/users/${userId}/toggle-block`;
+        
+        // Add CSRF token
+        const csrfInput = document.createElement('input');
+        csrfInput.type = 'hidden';
+        csrfInput.name = 'csrf_token';
+        csrfInput.value = document.querySelector('meta[name=csrf-token]').getAttribute('content');
+        form.appendChild(csrfInput);
+        
         document.body.appendChild(form);
         form.submit();
     }

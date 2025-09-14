@@ -41,10 +41,11 @@ limiter = Limiter(
 # Configuration
 app.config['UPLOAD_FOLDER'] = 'static/uploads'
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
+app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=1)  # 1 hour session timeout
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'pdf', 'doc', 'docx'}
 
 # MongoDB setup
-client = MongoClient(os.getenv("MONGO_URI", "mongodb+srv://alu:262122@evnet.k1uvmwe.mongodb.net/?retryWrites=true&w=majority&appName=evnet"))
+client = MongoClient(os.getenv("MONGO_URI","mongodb://localhost:27017"))
 db = client["alumni_db"]
 users_collection = db["users"]
 events_collection = db["events"]
@@ -132,6 +133,37 @@ mail = Mail(app)
 
 # Create upload directory if it doesn't exist
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+
+# User activity tracking collection
+user_activity_collection = db["user_activity"]
+
+# Server start time for session management
+SERVER_START_TIME = datetime.now()
+
+@app.before_request
+def before_request():
+    """Handle session timeout and server restart detection"""
+    # Check for session timeout
+    if 'alumni_id' in session or 'admin_id' in session:
+        if 'last_activity' not in session:
+            session['last_activity'] = datetime.now().isoformat()
+        else:
+            last_activity = datetime.fromisoformat(session['last_activity'])
+            # 1 hour session timeout
+            if datetime.now() - last_activity > timedelta(hours=1):
+                session.clear()
+                return redirect(url_for('login'))
+        session['last_activity'] = datetime.now().isoformat()
+    
+    # Clear sessions on server restart
+    if 'server_start_time' not in session:
+        session['server_start_time'] = SERVER_START_TIME.isoformat()
+    else:
+        session_start = datetime.fromisoformat(session['server_start_time'])
+        # If server was restarted, clear sessions
+        if session_start < SERVER_START_TIME:
+            session.clear()
+            return redirect(url_for('login'))
 
 # Create default admin user if it doesn't exist (unchanged)
 def create_default_admin():
@@ -252,6 +284,21 @@ def send_notification_email(recipients, subject, body):
         print(f"Email sending failed: {e}")
         return False
 
+def track_user_activity(user_id, action, details=None):
+    """Track user activity for analytics and security"""
+    try:
+        activity_log = {
+            "user_id": ObjectId(user_id),
+            "action": action,
+            "details": details or {},
+            "timestamp": datetime.now(),
+            "ip_address": request.remote_addr if request else None,
+            "user_agent": request.headers.get('User-Agent') if request else None
+        }
+        user_activity_collection.insert_one(activity_log)
+    except Exception as e:
+        print(f"Failed to track user activity: {e}")
+
 # --- Core Routes ---
 @app.route("/")
 def index():
@@ -310,9 +357,17 @@ def register():
             # --- NEW for directory privacy ---
             "profile_privacy": "alumni_only" 
         }
-        users_collection.insert_one(user_data)
-        flash("Registration successful! Please log in.", "success")
-        return redirect(url_for("login"))
+        result = users_collection.insert_one(user_data)
+        
+        # Track registration activity
+        track_user_activity(result.inserted_id, "registration", {"email": email, "name": name})
+        
+        # Auto-login the user after registration
+        clear_user_session("alumni")
+        set_user_session("alumni", result.inserted_id)
+        
+        flash("Registration successful! Welcome to the alumni community!", "success")
+        return redirect(url_for("alumni_dashboard"))
     return render_template("register.html")
 
 @app.route("/login", methods=["GET", "POST"])
@@ -340,6 +395,9 @@ def login():
                 {"$set": {"failed_login_attempts": 0, "lockout_until": None, "last_login": datetime.now()}}
             )
             
+            # Track login activity
+            track_user_activity(user["_id"], "login", {"user_type": "admin" if user.get("is_admin", False) else "alumni"})
+            
             # Session handling logic - clear alumni session and set new one
             clear_user_session("alumni")
             set_user_session("alumni", user["_id"])
@@ -353,7 +411,7 @@ def login():
                 return redirect(url_for("admin_dashboard"))
             else:
                 flash(f"Welcome back, {user.get('name', 'User')}!", "success")
-                return redirect(url_for("alumni_dashboard"))
+                return redirect(url_for("index"))
         else:
             # Increment failed attempts
             if user:
@@ -506,14 +564,15 @@ def reset_password(token):
 
 @app.route("/logout")
 def logout():
-    clear_user_session("admin")
-    clear_user_session("alumni")
+    """Logout and clear all sessions"""
+    session.clear()
     flash("Logged out successfully!", "success")
     return redirect(url_for("index"))
 
 @app.route("/admin/logout")
 def admin_logout():
-    clear_user_session("admin")
+    """Admin logout and clear all sessions"""
+    session.clear()
     flash("Admin logged out successfully!", "success")
     return redirect(url_for("admin_login"))
 
@@ -546,10 +605,16 @@ def alumni_dashboard():
         "user_rsvps": rsvps_collection.count_documents({"user_id": ObjectId(current_user.id)})
     }
     
+    # Get recent user activity
+    recent_activity = list(user_activity_collection.find({
+        "user_id": ObjectId(current_user.id)
+    }).sort("timestamp", -1).limit(5))
+    
     return render_template("alumni_dashboard.html", 
                          upcoming_events=upcoming_events,
                          user_rsvps=user_rsvps,
                          recent_jobs=recent_jobs,
+                         recent_activity=recent_activity,
                          stats=stats)
 
 @app.route("/profile")
@@ -601,6 +666,12 @@ def edit_profile():
                 update_data["profile_picture"] = f"uploads/{unique_filename}"
         
         users_collection.update_one({"_id": ObjectId(current_user.id)}, {"$set": update_data})
+        
+        # Track profile update activity
+        track_user_activity(current_user.id, "profile_update", {
+            "updated_fields": list(update_data.keys())
+        })
+        
         flash("Profile updated successfully!", "success")
         return redirect(url_for("profile"))
     
@@ -1018,6 +1089,14 @@ def rsvp(event_id):
         rsvps_collection.insert_one(rsvp_data)
         flash(f"RSVP recorded as {status}.", "success")
     
+    # Track RSVP activity
+    track_user_activity(current_user.id, "rsvp", {
+        "event_id": str(event_id),
+        "event_title": event["title"],
+        "status": status,
+        "guest_count": guest_count
+    })
+    
     # Send confirmation email to user
     send_notification_email(
         [current_user.email],
@@ -1327,7 +1406,7 @@ def admin_users():
 @admin_required_new
 def admin_events():
     events = list(events_collection.find().sort("date", 1))
-    return render_template("admin_events.html", events=events)
+    return render_template("admin_events.html", events=events, now=datetime.now())
 
 @app.route("/api/events/<event_id>/rsvp-stats")
 @admin_required_new
@@ -1666,7 +1745,141 @@ def admin_analytics():
     return render_template("admin_analytics.html", 
                            event_attendance=event_attendance,
                            user_engagement=user_engagement,
-                           monthly_stats=monthly_stats)
+                           monthly_stats=monthly_stats,
+                           now=datetime.now())
+
+@app.route("/admin/export/events")
+@admin_required_new
+def export_events_data():
+    """Export all events data as CSV"""
+    import csv
+    from flask import make_response
+    
+    # Get all events
+    events = list(events_collection.find().sort("created_at", -1))
+    
+    # Create CSV response
+    output = []
+    output.append(['Event ID', 'Title', 'Description', 'Date', 'Location', 'Capacity', 'Category', 'Created By', 'Created At', 'Total RSVPs', 'Yes RSVPs'])
+    
+    for event in events:
+        # Get RSVP statistics for this event
+        rsvps = list(rsvps_collection.find({"event_id": event["_id"]}))
+        total_rsvps = len(rsvps)
+        yes_rsvps = len([r for r in rsvps if r["status"] == "Yes"])
+        
+        # Get creator name
+        creator = users_collection.find_one({"_id": event.get("created_by")})
+        creator_name = creator.get("name", "Unknown") if creator else "Unknown"
+        
+        output.append([
+            str(event["_id"]),
+            event.get("title", ""),
+            event.get("description", ""),
+            event.get("date", "").strftime("%Y-%m-%d %H:%M") if event.get("date") else "",
+            event.get("location", ""),
+            event.get("capacity", 0),
+            event.get("category", ""),
+            creator_name,
+            event.get("created_at", "").strftime("%Y-%m-%d %H:%M") if event.get("created_at") else "",
+            total_rsvps,
+            yes_rsvps
+        ])
+    
+    # Create response
+    response = make_response('\n'.join([','.join([f'"{str(item)}"' for item in row]) for row in output]))
+    response.headers['Content-Type'] = 'text/csv'
+    response.headers['Content-Disposition'] = f'attachment; filename=events_data_{datetime.now().strftime("%Y%m%d_%H%M%S")}.csv'
+    
+    return response
+
+@app.route("/admin/export/users")
+@admin_required_new
+def export_users_data():
+    """Export all users data as CSV"""
+    import csv
+    from flask import make_response
+    
+    # Get all users
+    users = list(users_collection.find().sort("created_at", -1))
+    
+    # Create CSV response
+    output = []
+    output.append(['User ID', 'Name', 'Email', 'Phone', 'Graduation Year', 'Is Admin', 'Is Active', 'Profile Picture', 'Bio', 'Skills', 'Interests', 'Created At', 'Last Login'])
+    
+    for user in users:
+        skills_str = ', '.join(user.get("skills", []))
+        interests_str = ', '.join(user.get("interests", []))
+        
+        output.append([
+            str(user["_id"]),
+            user.get("name", ""),
+            user.get("email", ""),
+            user.get("phone", ""),
+            user.get("grad_year", ""),
+            "Yes" if user.get("is_admin", False) else "No",
+            "Yes" if user.get("is_active", True) else "No",
+            user.get("profile_picture", ""),
+            user.get("bio", ""),
+            skills_str,
+            interests_str,
+            user.get("created_at", "").strftime("%Y-%m-%d %H:%M") if user.get("created_at") else "",
+            user.get("last_login", "").strftime("%Y-%m-%d %H:%M") if user.get("last_login") else ""
+        ])
+    
+    # Create response
+    response = make_response('\n'.join([','.join([f'"{str(item)}"' for item in row]) for row in output]))
+    response.headers['Content-Type'] = 'text/csv'
+    response.headers['Content-Disposition'] = f'attachment; filename=users_data_{datetime.now().strftime("%Y%m%d_%H%M%S")}.csv'
+    
+    return response
+
+@app.route("/admin/export/rsvps")
+@admin_required_new
+def export_rsvps_data():
+    """Export all RSVPs data as CSV"""
+    import csv
+    from flask import make_response
+    
+    # Get all RSVPs with user and event details
+    rsvps = list(rsvps_collection.find().sort("rsvp_date", -1))
+    
+    # Create CSV response
+    output = []
+    output.append(['RSVP ID', 'User Name', 'User Email', 'Event Title', 'Event Date', 'Event Location', 'RSVP Status', 'Guest Count', 'Dietary Restrictions', 'Comments', 'RSVP Date'])
+    
+    for rsvp in rsvps:
+        # Get user details
+        user = users_collection.find_one({"_id": rsvp["user_id"]})
+        user_name = user.get("name", "Unknown") if user else "Unknown"
+        user_email = user.get("email", "Unknown") if user else "Unknown"
+        
+        # Get event details
+        event = events_collection.find_one({"_id": rsvp["event_id"]})
+        event_title = event.get("title", "Unknown") if event else "Unknown"
+        event_date = event.get("date", "").strftime("%Y-%m-%d %H:%M") if event and event.get("date") else "Unknown"
+        event_location = event.get("location", "Unknown") if event else "Unknown"
+        
+        output.append([
+            str(rsvp["_id"]),
+            user_name,
+            user_email,
+            event_title,
+            event_date,
+            event_location,
+            rsvp.get("status", ""),
+            rsvp.get("guest_count", 0),
+            rsvp.get("dietary_restrictions", ""),
+            rsvp.get("comments", ""),
+            rsvp.get("rsvp_date", "").strftime("%Y-%m-%d %H:%M") if rsvp.get("rsvp_date") else ""
+        ])
+    
+    # Create response
+    response = make_response('\n'.join([','.join([f'"{str(item)}"' for item in row]) for row in output]))
+    response.headers['Content-Type'] = 'text/csv'
+    response.headers['Content-Disposition'] = f'attachment; filename=rsvps_data_{datetime.now().strftime("%Y%m%d_%H%M%S")}.csv'
+    
+    return response
 
 @app.route("/admin/backup")
 @admin_required_new
@@ -1750,11 +1963,13 @@ def calendar_view(year=None, month=None):
 
 @app.route("/search")
 def search_events():
-    """Advanced event search"""
+    """Advanced event search with improved functionality"""
     query = request.args.get('q', '')
     category = request.args.get('category', '')
     date_from = request.args.get('date_from', '')
     date_to = request.args.get('date_to', '')
+    sort_by = request.args.get('sort', 'date')
+    sort_order = request.args.get('order', 'asc')
     
     search_query = {}
     
@@ -1778,8 +1993,30 @@ def search_events():
         else:
             search_query["date"] = {"$lte": datetime.strptime(date_to, "%Y-%m-%d")}
     
-    events = list(events_collection.find(search_query).sort("date", 1))
+    # Determine sort order
+    sort_direction = 1 if sort_order == 'asc' else -1
+    sort_field = sort_by if sort_by in ['date', 'title', 'created_at'] else 'date'
+    
+    events = list(events_collection.find(search_query).sort(sort_field, sort_direction))
     categories = events_collection.distinct("category")
+    
+    # Log search activity
+    if get_current_user():
+        search_log = {
+            "user_id": ObjectId(get_current_user().id),
+            "query": query,
+            "filters": {
+                "category": category,
+                "date_from": date_from,
+                "date_to": date_to,
+                "sort_by": sort_by,
+                "sort_order": sort_order
+            },
+            "results_count": len(events),
+            "searched_at": datetime.now()
+        }
+        # Store search log (you might want to create a search_logs collection)
+        # search_logs_collection.insert_one(search_log)
     
     return render_template("search.html", 
                            events=events, 
@@ -1787,6 +2024,8 @@ def search_events():
                            category=category,
                            date_from=date_from,
                            date_to=date_to,
+                           sort_by=sort_by,
+                           sort_order=sort_order,
                            categories=categories)
 
 @app.route("/notifications")
@@ -1871,7 +2110,27 @@ def api_event_attendees(event_id):
     
     return jsonify(attendees)
 
-# if __name__ == "__main__":
-#     app.run(debug=True)
+@app.route("/api/user/activity")
+@general_login_required
+def api_user_activity():
+    """API endpoint for user activity data"""
+    current_user = get_current_user()
+    limit = request.args.get('limit', 10, type=int)
+    
+    activities = list(user_activity_collection.find({
+        "user_id": ObjectId(current_user.id)
+    }).sort("timestamp", -1).limit(limit))
+    
+    # Convert ObjectId to string for JSON serialization
+    for activity in activities:
+        activity['_id'] = str(activity['_id'])
+        activity['user_id'] = str(activity['user_id'])
+        if activity.get('timestamp'):
+            activity['timestamp'] = activity['timestamp'].isoformat()
+    
+    return jsonify(activities)
+
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+    app.run(debug=True)
+# if __name__ == "__main__":
+#     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
