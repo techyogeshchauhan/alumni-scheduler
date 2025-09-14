@@ -71,7 +71,7 @@
         </div>
     </div>
 
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
         <div class="bg-white p-6 rounded-lg shadow-md">
             <h3 class="text-lg font-semibold text-gray-800 mb-4">
                 <i class="fas fa-chart-pie mr-2 text-blue-600"></i>Events by Category
@@ -114,6 +114,70 @@
                     </div>
                 </div>
             </div>
+        </div>
+
+        <!-- Admin Notifications Section -->
+        <div class="bg-white p-6 rounded-lg shadow-md">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-lg font-semibold text-gray-800">
+                    <i class="fas fa-bell mr-2 text-blue-600"></i>Recent Notifications
+                </h3>
+                {% if get_notification_count() > 0 %}
+                <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                    {{ get_notification_count() }} new
+                </span>
+                {% endif %}
+            </div>
+            
+            {% set admin_notifications = get_unread_notifications() %}
+            {% if admin_notifications %}
+                <div class="space-y-3 max-h-64 overflow-y-auto">
+                    {% for notification in admin_notifications %}
+                    <div class="flex items-start p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer" 
+                         {% if notification.action_url %}onclick="window.location.href='{{ notification.action_url }}'"{% endif %}>
+                        <div class="flex-shrink-0 mr-3">
+                            {% if notification.type == 'rsvp_response' %}
+                                <div class="w-8 h-8 bg-yellow-100 rounded-full flex items-center justify-center">
+                                    <i class="fas fa-reply text-yellow-600 text-sm"></i>
+                                </div>
+                            {% elif notification.type == 'event_created' %}
+                                <div class="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                                    <i class="fas fa-calendar text-blue-600 text-sm"></i>
+                                </div>
+                            {% elif notification.type == 'job_posted' %}
+                                <div class="w-8 h-8 bg-orange-100 rounded-full flex items-center justify-center">
+                                    <i class="fas fa-briefcase text-orange-600 text-sm"></i>
+                                </div>
+                            {% else %}
+                                <div class="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center">
+                                    <i class="fas fa-bell text-gray-600 text-sm"></i>
+                                </div>
+                            {% endif %}
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <p class="text-sm font-medium text-gray-900 truncate">{{ notification.title }}</p>
+                            <p class="text-xs text-gray-600 truncate">{{ notification.message }}</p>
+                            <p class="text-xs text-gray-500 mt-1">{{ notification.created_at.strftime('%b %d, %I:%M %p') }}</p>
+                        </div>
+                        {% if not notification.read %}
+                        <div class="flex-shrink-0 ml-2">
+                            <div class="w-2 h-2 bg-blue-600 rounded-full"></div>
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+                <div class="mt-4 text-center">
+                    <a href="{{ url_for('user_notifications') }}" class="text-blue-600 hover:text-blue-800 text-sm font-medium">
+                        View All Notifications <i class="fas fa-arrow-right ml-1"></i>
+                    </a>
+                </div>
+            {% else %}
+                <div class="text-center py-8">
+                    <i class="fas fa-bell-slash text-3xl text-gray-300 mb-2"></i>
+                    <p class="text-gray-500 text-sm">No new notifications</p>
+                </div>
+            {% endif %}
         </div>
     </div>
 

@@ -57,6 +57,10 @@
                                     <div class="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
                                         <i class="fas fa-cog text-purple-600"></i>
                                     </div>
+                                {% elif notification.type == 'rsvp_response' %}
+                                    <div class="w-10 h-10 bg-yellow-100 rounded-full flex items-center justify-center">
+                                        <i class="fas fa-reply text-yellow-600"></i>
+                                    </div>
                                 {% elif notification.type == 'test' %}
                                     <div class="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center">
                                         <i class="fas fa-flask text-gray-600"></i>
@@ -105,6 +109,11 @@
                                         <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-orange-50 text-orange-700">
                                             <i class="fas fa-briefcase mr-1"></i>
                                             Job
+                                        </span>
+                                        {% elif notification.type == 'rsvp_response' %}
+                                        <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-50 text-yellow-700">
+                                            <i class="fas fa-reply mr-1"></i>
+                                            RSVP
                                         </span>
                                         {% endif %}
                                     </div>
