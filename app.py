@@ -48,7 +48,8 @@ app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=1)  # 1 hour session 
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'pdf', 'doc', 'docx'}
 
 # MongoDB setup
-client = MongoClient(os.getenv("MONGO_URI","mongodb://localhost:27017"))
+# client = MongoClient(os.getenv("MONGO_URI","mongodb://localhost:27017"))
+client = MongoClient(os.getenv("MONGO_URI","mongodb+srv://alu:<262122@evnet.k1uvmwe.mongodb.net/?retryWrites=true&w=majority&appName=evnet"))
 db = client["alumni_db"]
 users_collection = db["users"]
 events_collection = db["events"]
@@ -2229,7 +2230,7 @@ def api_user_activity():
     return jsonify(activities)
 
 
-if __name__ == "__main__":
-    app.run(debug=True)
 # if __name__ == "__main__":
-#     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+#     app.run(debug=True)
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
