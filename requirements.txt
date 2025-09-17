@@ -31,6 +31,7 @@ Flask-Limiter==3.5.0
 Flask-Login==0.6.2
 Flask-Mail==0.9.1
 Flask-WTF==1.2.2
+flask_moment
 frozenlist==1.7.0
 ics==0.7.2
 idna==3.10
