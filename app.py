@@ -49,7 +49,7 @@ ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'pdf', 'doc', 'docx'}
 
 # MongoDB setup
 # client = MongoClient(os.getenv("MONGO_URI","mongodb://localhost:27017"))
-client = MongoClient(os.getenv("MONGO_URI","mongodb+srv://alu:<262122@evnet.k1uvmwe.mongodb.net/?retryWrites=true&w=majority&appName=evnet"))
+client = MongoClient(os.getenv("MONGO_URI","mongodb+srv://alu:262122@evnet.k1uvmwe.mongodb.net/?retryWrites=true&w=majority&appName=evnet"))
 db = client["alumni_db"]
 users_collection = db["users"]
 events_collection = db["events"]
